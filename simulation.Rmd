@@ -1,0 +1,279 @@
+---
+title: "Application of Central Limit Theorem to a exponential distribution"
+author: "Eduardo Bortoluzzi Junior"
+date: "October 17, 2015"
+output: pdf_document
+---
+
+Overview
+--------
+
+This report simulates an exponential distribution and a distribution of averages
+of exponentials to show their differences and their similarities. It is expected
+that the mean of both distributions are almost the same, but the observations
+are more dispersed on the exponential distribution and more concentrated at the 
+distribution of averages of exponentials. Also, the distribution of averages of
+exponentials must be a standard normal. 
+
+Simulations
+-----------
+<!-- 
+Include English explanations of the simulations you ran, with the accompanying R code. Your explanations should make clear what the R code accomplishes. 
+-->
+
+```{r echo=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+
+Start setting some constants for the simulation.
+
+```{r}
+lambda <- 0.2
+
+dist.mean <- 1 / lambda
+dist.sd <- 1 / lambda
+
+observations <- 40
+
+simul <- 1000
+```
+
+$\lambda$, which is the ratio in an exponential distribution, is set to 
+`r lambda` for all simulations. The distribution mean, $\mu$, is set to 
+$\frac{1}{\lambda}$ in the variable `dist.mean`, which value is `r dist.mean`. 
+The standard deviation, $\sigma$, is also set to $\frac{1}{\lambda}$, in the 
+variable `dist.sd`, which value is `r dist.sd`.
+
+The investigation will be on the distribution of averages of `r observations` 
+exponentials, which is set in the variable `observations`. `r simul` simulations
+will be run. This value is set in the variable `simul`.
+
+To make this simulation reproducible, the seed is set:
+
+```{r}
+set.seed(20151017)
+```
+
+Two distributions are generated: an exponential distribution with 
+`r simul` observations and a distribution of `r simul` averages of 
+`r observations` exponentials. Each of the observations receives a `type` that
+defines from which distribution it is.
+
+```{r}
+distributions <- data.frame(
+    x = c (
+        # exponential distribution with `simul` observations
+        rexp(simul, lambda),
+        
+        # distribution of `simul` averages of `observations` exponentials
+        replicate(simul, {
+          mean(rexp(observations, lambda))
+        })
+    ),
+    type = factor( rep(
+        c('exp', 'avg'), 
+        rep(simul, 2)
+    ))
+)
+
+```
+
+The sample and the standard deviation of each distribution are calculated and
+saved to the variable `s`:
+
+```{r}
+s <- summarise(
+    group_by(distributions, type), 
+    mean=mean(x), 
+    var=sd(x)^2
+)
+```
+
+Recall that the $Var(\bar{X})=\frac{\sigma^2}{n}$, and the standard error 
+($SE_{mean}$) is $\frac{\sigma}{\sqrt{n}}$, so $Var(\bar{X})={SE_{mean}}^2$.
+
+A standard normal distribution, with the same paremeters from the distribution
+of the averages, is generated to make a comparision:
+
+```{r}
+std.normal <- data.frame(x=rnorm(
+                            n = simul, 
+                            mean = s[s$type == "avg",]$mean, 
+                            sd = sqrt(s[s$type == "avg",]$var)
+                         ))
+```
+
+
+Sample Mean versus Theoretical Mean
+-----------------------------------
+<!--
+Include figures with titles. In the figures, highlight the means you are comparing. Include text that explains the figures and what is shown on them, and provides appropriate numbers.
+-->
+
+```{r mean, echo=FALSE, fig.height=3}
+g <- ggplot(distributions, aes(x=x, fill=type))
+
+g <- g + geom_histogram(alpha=.2, 
+                        binwidth=.3, 
+                        aes(y=..density..), 
+                        colour="black", 
+                        position="identity")
+
+g <- g + geom_vline(data=s, 
+                    aes(xintercept=mean, colour=type), 
+                    linetype=c("dashed","dotdash"), 
+                    size=1)
+
+g <- g + theme(legend.justification=c(1,1), legend.position=c(1,1))
+
+g <- g + ggtitle("Exponential Distribution and Distribution of Averages")
+
+g <- g + scale_fill_discrete(
+            breaks=c("exp", "avg"), 
+            labels=c("of exponentials", "of averages")
+        )
+g
+```
+
+The mean of the exponential distribution and the distribution of averages are
+almost the same, `r s[s$type=='exp',]$mean` and 
+`r s[s$type=='avg',]$mean`, respectively. The expected mean
+is `r dist.mean`, so the distributions' means are what we were expecting.
+
+Important to notice that the observations in the exponential distribution are
+more dispersed and the averages of the observations in the distribution of
+averages are more concentrated, but both have the same mean. This observation
+is expected, in accordance with the Central Limit Theorem.
+
+Sample Variance versus Theoretical Variance
+-------------------------------------------
+<!--
+Include figures (output from R) with titles. Highlight the variances you are comparing. Include text that explains your understanding of the differences of the variances.
+-->
+
+```{r variance, echo = FALSE, fig.height=3}
+g <- ggplot(distributions, aes(x=x, fill=type))
+
+g <- g + geom_histogram(alpha=.2, 
+                        binwidth=.3, 
+                        aes(y=..density..), 
+                        colour="black", 
+                        position="identity")
+
+g <- g + geom_vline(data=s, 
+                    aes(xintercept=mean, colour=type), 
+                    linetype=c("dashed","dotdash"), 
+                    size=1)
+
+g <- g + geom_vline(data=s, 
+                    aes(xintercept=-sqrt(var)+mean, colour=type), 
+                    alpha=.8,
+                    size=1)
+
+g <- g + geom_vline(data=s, 
+                    aes(xintercept=+sqrt(var)+mean, colour=type), 
+                    alpha=.8,
+                    size=1)
+
+g <- g + theme(legend.justification=c(1,1), legend.position=c(1,1))
+
+g <- g + ggtitle("Standard Deviation and Standard Error of the distributions")
+
+g <- g + scale_fill_discrete(
+            breaks=c("exp", "avg"), 
+            labels=c("of exponentials", "of averages")
+        )
+
+g
+```
+
+For the exponential distribution, it was plotted the first standard deviation
+lines, which are $mean \pm \sqrt{var}$, and for the distribution of averages,
+it was plotted the first standard errors, which are $mean \pm \sqrt{var}$.
+
+The variance for the exponential distribution is 
+`r s[s$type=='exp',]$var` and for the distribution of 
+averages is `r s[s$type=='avg',]$var`. This difference is expected, as the
+distribution of averages of exponentials are more concentrated to the mean of
+the distribution.
+
+When estimating the variance of the population, $\sigma^2$, the variance of 
+the exponential distribution estimates it:
+
+$S^2 = \sigma^2 = `r s[s$type=='exp',]$var`$.
+
+Derivating the standard error formula:
+
+$SE_{mean} = \frac{\sigma}{\sqrt{n}} \implies \sigma = SE_{mean} * \sqrt{n} = \sqrt{Var(\bar{X})*n} = \sqrt{`r s[s$type=='avg',]$var`*`r observations`} = `r s[s$type=='avg',]$var * observations`$
+
+Each of the variances $\sigma^2$ is the square of the standard deviation, so,
+respectively, `r sqrt(s[s$type=='exp',]$var)` and 
+`r sqrt(s[s$type=='avg',]$var * observations)` are the
+standard deviations from the exponential distribution and from the distribution
+averages, whose are near the theoretical standard deviation of `r dist.sd`.
+
+
+Distribution
+------------
+<!--
+Via figures and text, explain how one can tell the distribution is approximately normal.
+-->
+
+```{r distribution, echo = FALSE, fig.height=3}
+g <- ggplot(distributions[distributions$type == 'avg',], 
+            aes(x=x, colour="averages"))
+
+g <- g + geom_histogram( 
+                        binwidth=.3, 
+                        aes(y=..density..), 
+                        colour="black",
+                        fill="blue")
+
+g <- g + stat_density(alpha=.8,
+                      size=1,
+                      geom="line",
+                      position="identity")
+
+g <- g + stat_density(data=std.normal, 
+                      aes(x=x, colour="standard normal"), 
+                      alpha = .8,
+                      size=1, 
+                      geom="line",
+                      position="identity")
+
+g <- g + scale_colour_manual(
+            values=c("averages"="red", "standard normal"="green"),
+            name="distribution")
+
+g <- g + scale_linetype_manual(
+            values=c("averages"=1, "standard normal"="dotted"),
+            name="distribution")
+
+g <- g + theme(legend.justification=c(1,1), legend.position=c(1,1))
+
+g <- g + ggtitle("Distribution of Averages vs Standard Normal Distribution")
+
+g
+```
+
+Plotting the densities for the distribution of averages of exponentials and for
+a standard normal with the same median and standard deviation, we can see that
+they are similar, so the Central Limit Theorem is verified, as expected.
+
+# Appendix
+
+Code for *Sample Mean versus Theoretical Mean*:
+
+```{r ref.label='mean', results='hide', eval=FALSE}
+```
+
+Code for *Sample Variance versus Theoretical Variance*:
+
+```{r ref.label='variance', results='hide', eval=FALSE}
+```
+
+Code for *Distribution*:
+
+```{r ref.label='distribution', results='hide', eval=FALSE}
+```
