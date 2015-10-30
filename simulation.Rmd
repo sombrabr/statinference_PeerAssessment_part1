@@ -136,6 +136,9 @@ g <- g + scale_fill_discrete(
 g
 ```
 
+
+<!-- SHOULD COMPARE WITH THE CALCULATION! -->
+
 The mean of the exponential distribution and the distribution of averages are
 almost the same, `r s[s$type=='exp',]$mean` and 
 `r s[s$type=='avg',]$mean`, respectively. The expected mean
@@ -187,6 +190,8 @@ g <- g + scale_fill_discrete(
 
 g
 ```
+
+<!-- SHOULD COMPARE WITH THE CALCULATION -->
 
 For the exponential distribution, it was plotted the first standard deviation
 lines, which are $mean \pm \sqrt{var}$, and for the distribution of averages,
